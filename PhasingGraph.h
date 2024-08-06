@@ -72,6 +72,19 @@ struct EdgeResult{
     int aa;
 };
 
+enum Haplotype {
+    HAPLOTYPE1 = 0,
+    HAPLOTYPE2 = 1
+};
+
+struct PhaseResult {
+    int refHaplotype;
+    int phaseSet;
+    PhaseResult() = default;
+    PhaseResult(int inRefHaplotype, int inPhaseSet)
+        : refHaplotype(inRefHaplotype), phaseSet(inPhaseSet) {}
+};
+
 class VairiantGraph{
     
     private:
@@ -88,12 +101,9 @@ class VairiantGraph{
         std::map<int,ReadBaseMap*> *totalVariantInfo;
         // position, type < 0=SNP 1=SV 2=MOD 3=INDEL >
         std::map<int,int> *variantType;
-        
-        // phasing result     
-        // PosAllele , block_start    
-        std::map<PosAllele,int> *bkResult;
-        // record each position haplotype
-        std::map<PosAllele,int> *subNodeHP;
+
+        // position phasing result
+        std::map<int,PhaseResult> *posPhasingResult;
         // store phased read and read's haplotype
         std::map<std::string,int> *readHpMap;
 

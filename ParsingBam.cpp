@@ -474,7 +474,7 @@ void SnpParser::writeLine(std::string &input, bool &ps_def, std::ofstream &resul
         if( psElementIter != phasingResult.end() && posIter != (*chrVariant)[fields[0]].end() ){
             // add PS flag and value
             fields[8] = fields[8] + ":PS";
-            fields[9] = fields[9] + ":" + std::to_string((*psElementIter).second.block);
+            fields[9] = fields[9] + ":" + std::to_string((*psElementIter).second.block + 1);
                         
             // find GT flag
             int colon_pos = 0;

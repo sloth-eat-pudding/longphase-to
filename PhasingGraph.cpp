@@ -224,10 +224,6 @@ void BlockRead::recordRead(std::string readName){
 void VairiantGraph::edgeConnectResult(){
     // current snp, haplotype (1 or 2), support snp
     std::map<int, std::map<int,std::vector<int> > > *hpCountMap = new std::map<int, std::map<int,std::vector<int> > >;
-    // current snp, result haplotype (1 or 2)
-    std::map<int,int> *hpResult = new std::map<int,int>;
-    // < block start, <snp in this block> >
-    std::map<int,std::vector<int> > *phasedBlocks = new std::map<int,std::vector<int> >;
     
     int blockStart = -1;
     int currPos = -1;
@@ -254,8 +250,8 @@ void VairiantGraph::edgeConnectResult(){
         }
         
         // get the number of HP1 and HP2 supported reference allele
-        int h1 = (*hpCountMap)[currPos][1].size();
-        int h2 = (*hpCountMap)[currPos][2].size();
+        int h1 = (*hpCountMap)[currPos][HAPLOTYPE1].size();
+        int h2 = (*hpCountMap)[currPos][HAPLOTYPE2].size();
 
         // new block, set this position as block start 
         if( h1 == h2 ){
@@ -263,25 +259,27 @@ void VairiantGraph::edgeConnectResult(){
             if( currPos < lastConnectPos ){
                 continue;
             }
-            
+            // check block size to remove one node island
+            if(!(*posPhasingResult).empty() && posPhasingResult->rbegin()->first == blockStart){
+                (*posPhasingResult).erase(blockStart);
+            }
+
             blockStart = currPos;
-            (*phasedBlocks)[blockStart].push_back(currPos);
-            (*hpResult)[currPos] = 1;
+            posPhasingResult->emplace(currPos, PhaseResult(HAPLOTYPE1, blockStart));
         }
         else{
             if( h1 > h2 || h1 < h2 ){
-                int currHP = ( h1 > h2 ? 1 : 2 );
-                (*hpResult)[currPos] = currHP;
-                (*phasedBlocks)[blockStart].push_back(currPos);
+                int currHP = ( h1 > h2 ? HAPLOTYPE1 : HAPLOTYPE2 );
+                posPhasingResult->emplace(currPos, PhaseResult(currHP, blockStart));
             }
         }
-        
+
         // Check if there is no edge from current node
         std::map<int,VariantEdge*>::iterator edgeIter = edgeList->find( currPos );
         if( edgeIter==edgeList->end() ){
             continue;
         }
-        
+
         // check connect between surrent SNP and next n SNPs
         for(int i = 0 ; i < params->connectAdjacent ; i++ ){
             // consider reads from the currnt SNP and the next (i+1)'s SNP
@@ -291,20 +289,20 @@ void VairiantGraph::edgeConnectResult(){
             //  2 : the haplotype of next (i+1)'s SNP are different as previous
             if( tmp.first.second != -1 ){
                 // record the haplotype resut of next (i+1)'s SNP
-                if( (*hpResult)[currPos] == 1 ){
+                if( (*posPhasingResult)[currPos].refHaplotype == HAPLOTYPE1 ){
                     if( tmp.first.second == 1 ){
-                        (*hpCountMap)[nextNodeIter->first][1].push_back(currPos);
+                        (*hpCountMap)[nextNodeIter->first][HAPLOTYPE1].push_back(currPos);
                     }
                     if( tmp.first.second == 2 ){
-                        (*hpCountMap)[nextNodeIter->first][2].push_back(currPos);
+                        (*hpCountMap)[nextNodeIter->first][HAPLOTYPE2].push_back(currPos);
                     }
                 }
-                if( (*hpResult)[currPos]==2 ){
+                if( (*posPhasingResult)[currPos].refHaplotype == HAPLOTYPE2 ){
                     if( tmp.first.second == 1 ){
-                        (*hpCountMap)[nextNodeIter->first][2].push_back(currPos);
+                        (*hpCountMap)[nextNodeIter->first][HAPLOTYPE2].push_back(currPos);
                     }
                     if( tmp.first.second == 2 ){
-                        (*hpCountMap)[nextNodeIter->first][1].push_back(currPos);
+                        (*hpCountMap)[nextNodeIter->first][HAPLOTYPE1].push_back(currPos);
                     }
                 }
                 if( params->generateDot ){
@@ -324,57 +322,7 @@ void VairiantGraph::edgeConnectResult(){
         }
     }
 
-    // loop all block and construct graph
-    // Record the phase set(PS) for each variant on the graph and record the haplotype to each variant's allele belongs.
-    for(auto blockIter = phasedBlocks->begin() ; blockIter != phasedBlocks->end() ; blockIter++ ){
-        // check block size to skip one node island
-        if( (*blockIter).second.size()<=1 ){
-            continue;
-        }
-        
-        // loop block's node
-        // store phasing results include PS and HP
-        for(auto currIter = (*blockIter).second.begin() ; currIter != (*blockIter).second.end() ; currIter++ ){
-            // check next node
-            auto nextIter = std::next(currIter,1);
-            if( nextIter == (*blockIter).second.end() ){
-                continue;
-            }
-
-            PosAllele refStart = std::make_pair((*currIter), 1);
-            PosAllele altStart = std::make_pair((*currIter), 2);
-            PosAllele refEnd = std::make_pair((*nextIter), 1);
-            PosAllele altEnd = std::make_pair((*nextIter), 2);
-            
-            // store PS results
-            (*bkResult)[refStart] = (*blockIter).first + 1;
-            (*bkResult)[refEnd]   = (*blockIter).first + 1;
-            (*bkResult)[altStart] = (*blockIter).first + 1;
-            (*bkResult)[altEnd]   = (*blockIter).first + 1;
-            
-            // store HP results
-            if( currIter == (*blockIter).second.begin() ){
-                (*subNodeHP)[refStart] = 0;
-                (*subNodeHP)[altStart] = 1;
-            }
-            
-            if( (*hpResult)[(*currIter)] == 0 || (*hpResult)[(*nextIter)] == 0 ){
-                
-            }
-            else if( (*hpResult)[(*currIter)] == (*hpResult)[(*nextIter)] ){
-                (*subNodeHP)[refEnd] = (*subNodeHP)[refStart];
-                (*subNodeHP)[altEnd] = (*subNodeHP)[altStart];
-            }
-            else{
-                (*subNodeHP)[refEnd] = (*subNodeHP)[altStart];
-                (*subNodeHP)[altEnd] = (*subNodeHP)[refStart];
-            }
-        }
-    }
-    
     delete hpCountMap;
-    delete hpResult;
-    delete phasedBlocks;
 }
 
 VairiantGraph::VairiantGraph(std::string &in_ref, PhasingParameters &in_params){
@@ -383,8 +331,7 @@ VairiantGraph::VairiantGraph(std::string &in_ref, PhasingParameters &in_params){
     
     totalVariantInfo = new std::map<int,ReadBaseMap*>;
     edgeList = new std::map<int,VariantEdge*>;
-    bkResult = new std::map<PosAllele,int>;
-    subNodeHP = new std::map<PosAllele,int>;
+    posPhasingResult = new std::map<int,PhaseResult>;
     variantType = new std::map<int,int>;
     readHpMap = new std::map<std::string,int>;
 }
@@ -409,8 +356,7 @@ void VairiantGraph::destroy(){
     
     delete totalVariantInfo;
     delete edgeList;
-    delete bkResult;
-    delete subNodeHP;
+    delete posPhasingResult;
     delete variantType;
     delete readHpMap;
 }
@@ -584,29 +530,32 @@ void VairiantGraph::readCorrection(){
     // haplotype, <position <allele, base count>>
     std::map<int,std::map<int,std::map<int,int>>> *hpAlleleCountMap = new std::map<int,std::map<int,std::map<int,int>>>;
 
+    // phasing result and variant allele mapping
+    const int variantHaplotype[2][2] = {
+        {HAPLOTYPE1, HAPLOTYPE2},
+        {HAPLOTYPE2, HAPLOTYPE1}
+    };
+
     // iter all read, determine the haplotype of the read
     for(std::vector<ReadVariant>::iterator readIter = (*readVariant).begin() ; readIter != (*readVariant).end() ; readIter++ ){
-        double refCount = 0;
-        double altCount = 0;
+        double haplotype1Count = 0;
+        double haplotype2Count = 0;
         //int block;
         
         // loop all variant 
         for( auto variant : (*readIter).variantVec ){
-            PosAllele refAllele = std::make_pair( variant.position , variant.allele+1);
-            std::map<PosAllele,int>::iterator nodePS = bkResult->find(refAllele);
-            //block = nodePS->second;
-            if( nodePS != bkResult->end() ){
-                if( (*bkResult)[refAllele] != 0 ){
-                    if((*subNodeHP)[refAllele]==0)refCount++;
-                    else altCount++;
-                }
+            auto posPhasingResultIter = posPhasingResult->find(variant.position);
+            if( posPhasingResultIter != posPhasingResult->end() ){
+                const PhaseResult& phasingResult = posPhasingResultIter->second;
+                if(variantHaplotype[phasingResult.refHaplotype][variant.allele] == HAPLOTYPE1)haplotype1Count++;
+                else haplotype2Count++;
             }
         }
         
         // tag high confident reads
-        if( std::max(refCount,altCount)/(refCount+altCount) > params->readConfidence && (refCount + altCount) > 1 ){
+        if( std::max(haplotype1Count,haplotype2Count)/(haplotype1Count+haplotype2Count) > params->readConfidence && (haplotype1Count + haplotype2Count) > 1 ){
             // tag read with the corresponding haplotype
-            int belongHP = ( refCount > altCount ? 0 : 1 );
+            int belongHP = ( haplotype1Count > haplotype2Count ? 0 : 1 );
             (*readHpMap)[(*readIter).read_name] = belongHP;
             
             //readBlockHP[(*readIter).read_name][(*readIter).reference_start][block]=belongHP;
@@ -646,15 +595,14 @@ void VairiantGraph::readCorrection(){
     */
     
     double snpConfidenceThreshold = params->snpConfidence;
-
-    subNodeHP->clear();
-    
     std::map<int,std::map<int,int>> hpAllele;
     // reassign allele result
     for(auto variantIter = totalVariantInfo->begin() ; variantIter != totalVariantInfo->end() ; variantIter++ ){
         int position = variantIter->first;
-        PosAllele refAllele = std::make_pair(position, 1);
-        PosAllele altAllele = std::make_pair(position, 2);
+        auto posPhasingResultIter = posPhasingResult->find(position);
+        if (posPhasingResultIter == posPhasingResult->end()) {
+            continue;
+        }
         
         double hp1Ref = (*hpAlleleCountMap)[0][position][0];
         double hp1Alt = (*hpAlleleCountMap)[0][position][1];
@@ -669,22 +617,20 @@ void VairiantGraph::readCorrection(){
         
         if( resultConfidence > snpConfidenceThreshold ){
             if( result1reads > result2reads ){
-                hp1Result = 0;
-                hp2Result = 1;
+                hp1Result = HAPLOTYPE1;
+                hp2Result = HAPLOTYPE2;
             }
             else if( result1reads < result2reads ){
-                hp1Result = 1;
-                hp2Result = 0;
+                hp1Result = HAPLOTYPE2;
+                hp2Result = HAPLOTYPE1;
             }
         }
 
         if( hp1Result != -1 && hp2Result != -1 ){
-            (*subNodeHP)[refAllele] = hp1Result;
-            (*subNodeHP)[altAllele] = hp2Result;
+            posPhasingResultIter->second.refHaplotype = hp1Result;
         }
         else{
-            bkResult->erase(refAllele);
-            bkResult->erase(altAllele);
+            posPhasingResult->erase(posPhasingResultIter);
         }
     }
 
@@ -716,18 +662,13 @@ void VairiantGraph::exportResult(std::string chrName, PhasingResult &result){
         
         PhasingElement tmp;
         
-        PosAllele ref = std::make_pair( variantIter->first , 1);
-        PosAllele alt = std::make_pair( variantIter->first , 2);
-        
-        std::map<PosAllele,int>::iterator psRefIter = bkResult->find(ref);
-        std::map<PosAllele,int>::iterator psAltIter = bkResult->find(alt);
-        
-        if( psRefIter != bkResult->end() || psAltIter != bkResult->end() ){
-            if( psRefIter != bkResult->end() )
-                tmp.block = (*psRefIter).second;
-            else
-                tmp.block = (*psAltIter).second;
-            tmp.RAstatus = std::to_string((*subNodeHP)[ref]) + "|" + std::to_string((*subNodeHP)[alt]);
+        auto posPhasingResultIter = posPhasingResult->find(variantIter->first);
+        if( posPhasingResultIter != posPhasingResult->end() ){
+            const PhaseResult& phasingResult = posPhasingResultIter->second;
+            tmp.block = phasingResult.phaseSet;
+            int tmpHaplotype1 = phasingResult.refHaplotype;
+            int tmpHaplotype2 = tmpHaplotype1 == 0 ? 1 : 0;
+            tmp.RAstatus = std::to_string(tmpHaplotype1) + "|" + std::to_string(tmpHaplotype2);
         }
         else
             continue;
