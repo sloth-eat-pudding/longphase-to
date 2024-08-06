@@ -258,7 +258,7 @@ void VairiantGraph::edgeConnectResult(){
         int h2 = (*hpCountMap)[currPos][2].size();
 
         // new block, set this position as block start 
-        if( h1 == 0 && h2 == 0 ){
+        if( h1 == h2 ){
             // No new blocks should be created if the next SNP has already been picked up
             if( currPos < lastConnectPos ){
                 continue;
