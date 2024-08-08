@@ -42,9 +42,9 @@ class BaseVairantParser{
         void unCompressParser(std::string &variantFile);
         virtual void parserProcess(std::string &input)=0;
         // output parser
-        void compressInput(std::string variantFile, std::string resultFile, PhasingResult phasingResult);
-        void unCompressInput(std::string variantFile, std::string resultFile, PhasingResult phasingResult);
-        virtual void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, PhasingResult &phasingResult)=0;
+        void compressInput(std::string variantFile, std::string resultFile, ChrPhasingResult &chrPhasingResult);
+        void unCompressInput(std::string variantFile, std::string resultFile, ChrPhasingResult &chrPhasingResult);
+        virtual void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, ChrPhasingResult &chrPhasingResult)=0;
 };
 
 class SnpParser : public BaseVairantParser{
@@ -62,7 +62,7 @@ class SnpParser : public BaseVairantParser{
         // override input parser
         void parserProcess(std::string &input);
         // override output parser
-        void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, PhasingResult &phasingResult);
+        void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, ChrPhasingResult &chrPhasingResult);
         
         bool commandLine;
         
@@ -79,7 +79,7 @@ class SnpParser : public BaseVairantParser{
         
         int getLastSNP(std::string chrName);
         
-        void writeResult(PhasingResult phasingResult);
+        void writeResult(ChrPhasingResult &chrPhasingResult);
 
         bool findSNP(std::string chr, int posistion);
         
@@ -100,7 +100,7 @@ class SVParser : public BaseVairantParser{
         // override input parser
         void parserProcess(std::string &input);
         // override output parser
-        void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, PhasingResult &phasingResult);
+        void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, ChrPhasingResult &chrPhasingResult);
         
         bool commandLine;
         
@@ -111,7 +111,7 @@ class SVParser : public BaseVairantParser{
             
         std::map<int, std::map<std::string ,bool> > getVariants(std::string chrName);  
 
-        void writeResult(PhasingResult phasingResult);
+        void writeResult(ChrPhasingResult &chrPhasingResult);
 
         bool findSV(std::string chr, int posistion);
 };
@@ -136,7 +136,7 @@ class METHParser : public BaseVairantParser{
         // override input parser
         void parserProcess(std::string &input);
         // override output parser
-        void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, PhasingResult &phasingResult);
+        void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, ChrPhasingResult &chrPhasingResult);
         
         bool commandLine;
         
@@ -147,7 +147,7 @@ class METHParser : public BaseVairantParser{
         METHParser(PhasingParameters &params, SnpParser &snpFile, SVParser &svFile);
         ~METHParser();
 		
-		void writeResult(PhasingResult phasingResult);
+		void writeResult(ChrPhasingResult &chrPhasingResult);
 };
 
 struct Alignment{

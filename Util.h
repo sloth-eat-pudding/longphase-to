@@ -13,43 +13,15 @@
 #include <vector>
 #include <omp.h>
 
-struct PhasingElement{
-    // i.e. 0|1  or   1|0
-    std::string RAstatus;
-    int block;
+struct PhasingResult {
+    int refHaplotype;
+    int phaseSet;
+    PhasingResult() = default;
+    PhasingResult(int inRefHaplotype, int inPhaseSet)
+        : refHaplotype(inRefHaplotype), phaseSet(inPhaseSet) {}
 };
-typedef std::map<std::string,PhasingElement> PhasingResult;
-typedef std::map<std::string,PhasingResult> ChrPhasingResult;
-
-/**
- * Merges phasing results from all chromosomes into one result.
- *
- * @param allChrPhasingResults Contains phasing results for each chromosome.
- * @param mergedPhasingResult A map to store the combined phasing results.
- *
- * The function combines the phasing elements from each chromosome into mergedPhasingResult.
- */
-void mergeAllChrPhasingResult(const ChrPhasingResult& allChrPhasingResults, PhasingResult& mergedPhasingResult);
-
-/**
- * Configures thread counts for chromosome processing and BAM parsing.
- *
- * @param defaultThreads Initial thread count for chromosome processing.
- * @param availableThreads  Total threads available for processing
- * @param chrnumThreads Set to the number of threads for chromosome processing.
- * @param bamParsernumThreads Set to the number of threads for BAM parsing.
- */
-void setPhasingNumThreads(const int& defaultChrThreads,const int& availableThreads,  int& chrnumThreads, int& bamParsernumThreads);
-
-/**
- * Configures thread counts for chromosome processing and BAM parsing.
- *
- * @param availableThreads  Total threads available for processing
- * @param chrnumThreads Set to the number of threads for chromosome processing.
- * @param bamParsernumThreads Set to the number of threads for BAM parsing.
- */
-void setModcallNumThreads(const int& availableThreads,  int& chrNumThreads, int& bamParserNumThreads);
-
+typedef std::map<int,PhasingResult> PosPhasingResult;
+typedef std::map<std::string, PosPhasingResult> ChrPhasingResult;
 
 // use for parsing
 struct Variant{

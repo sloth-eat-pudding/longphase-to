@@ -4,13 +4,6 @@ void ReadVariant::sort(){
     std::sort(variantVec.begin(), variantVec.end(), less_than_key());
 }
 
-void mergeAllChrPhasingResult(const ChrPhasingResult& allChrPhasingResults, PhasingResult& mergedPhasingResult) {
-    for(const auto& chrPair : allChrPhasingResults){
-        const PhasingResult& singlePhasingResult = chrPair.second;
-        mergedPhasingResult.insert(singlePhasingResult.begin(), singlePhasingResult.end());
-    }
-}
-
 std::string getTargetString(std::string line, std::string start_sign, std::string end_sign){
     int start = line.find(start_sign) + 1;
     int end   = line.find(end_sign);

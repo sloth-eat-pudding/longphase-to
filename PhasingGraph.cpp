@@ -260,17 +260,17 @@ void VairiantGraph::edgeConnectResult(){
                 continue;
             }
             // check block size to remove one node island
-            if(!(*posPhasingResult).empty() && posPhasingResult->rbegin()->first == blockStart){
-                (*posPhasingResult).erase(blockStart);
+            if(!posPhasingResult->empty() && posPhasingResult->rbegin()->first == blockStart){
+                posPhasingResult->erase(blockStart);
             }
 
             blockStart = currPos;
-            posPhasingResult->emplace(currPos, PhaseResult(HAPLOTYPE1, blockStart));
+            posPhasingResult->emplace(currPos, PhasingResult(HAPLOTYPE1, blockStart));
         }
         else{
             if( h1 > h2 || h1 < h2 ){
                 int currHP = ( h1 > h2 ? HAPLOTYPE1 : HAPLOTYPE2 );
-                posPhasingResult->emplace(currPos, PhaseResult(currHP, blockStart));
+                posPhasingResult->emplace(currPos, PhasingResult(currHP, blockStart));
             }
         }
 
@@ -331,7 +331,6 @@ VairiantGraph::VairiantGraph(std::string &in_ref, PhasingParameters &in_params){
     
     totalVariantInfo = new std::map<int,ReadBaseMap*>;
     edgeList = new std::map<int,VariantEdge*>;
-    posPhasingResult = new std::map<int,PhaseResult>;
     variantType = new std::map<int,int>;
     readHpMap = new std::map<std::string,int>;
 }
@@ -356,7 +355,6 @@ void VairiantGraph::destroy(){
     
     delete totalVariantInfo;
     delete edgeList;
-    delete posPhasingResult;
     delete variantType;
     delete readHpMap;
 }
@@ -546,7 +544,7 @@ void VairiantGraph::readCorrection(){
         for( auto variant : (*readIter).variantVec ){
             auto posPhasingResultIter = posPhasingResult->find(variant.position);
             if( posPhasingResultIter != posPhasingResult->end() ){
-                const PhaseResult& phasingResult = posPhasingResultIter->second;
+                const PhasingResult& phasingResult = posPhasingResultIter->second;
                 if(variantHaplotype[phasingResult.refHaplotype][variant.allele] == HAPLOTYPE1)haplotype1Count++;
                 else haplotype2Count++;
             }
@@ -655,31 +653,6 @@ void VairiantGraph::writingDotFile(std::string dotPrefix){
     return;
 }
 
-void VairiantGraph::exportResult(std::string chrName, PhasingResult &result){
-    
-    // loop all position
-    for( std::map<int,ReadBaseMap*>::iterator variantIter = totalVariantInfo->begin() ; variantIter != totalVariantInfo->end() ; variantIter++ ){
-        
-        PhasingElement tmp;
-        
-        auto posPhasingResultIter = posPhasingResult->find(variantIter->first);
-        if( posPhasingResultIter != posPhasingResult->end() ){
-            const PhaseResult& phasingResult = posPhasingResultIter->second;
-            tmp.block = phasingResult.phaseSet;
-            int tmpHaplotype1 = phasingResult.refHaplotype;
-            int tmpHaplotype2 = tmpHaplotype1 == 0 ? 1 : 0;
-            tmp.RAstatus = std::to_string(tmpHaplotype1) + "|" + std::to_string(tmpHaplotype2);
-        }
-        else
-            continue;
-        
-        if( tmp.block != 0){
-            std::string key = chrName + "_" + std::to_string( variantIter->first );
-            result[key] = tmp;
-        }
-    }
-}
-
 std::map<std::string,int>* VairiantGraph::getReadHP(){
     return readHpMap;
 }
@@ -688,7 +661,9 @@ int VairiantGraph::totalNode(){
     return totalVariantInfo->size();
 }
 
-void VairiantGraph::phasingProcess(){
+void VairiantGraph::phasingProcess(PosPhasingResult &inPosPhasingResult){
+    posPhasingResult = &inPosPhasingResult;
+
     // This step involves converting all reads into a graph structure, which will be stored as an edge list
     // in a two-layer map. The first layer of the map uses the starting coordinate as the key and contains
     // a second layer map as the value. The second layer map uses the destination coordinate as the key and

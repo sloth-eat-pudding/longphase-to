@@ -70,7 +70,7 @@ PhasingProcess::PhasingProcess(PhasingParameters params)
     // Initialize an empty map in chrPhasingResult to store all phasing results.
     // This is done to prevent issues with multi-threading, by defining an empty map first.
     for (std::vector<std::string>::iterator chrIter = chrName.begin(); chrIter != chrName.end(); chrIter++)    {
-        chrPhasingResult[*chrIter] = PhasingResult();
+        chrPhasingResult[*chrIter] = PosPhasingResult();
     }
 
     // init data structure and get core n
@@ -122,9 +122,7 @@ PhasingProcess::PhasingProcess(PhasingParameters params)
         // trans read-snp info to edge info
         vGraph->addEdge(readVariantVec);
         // run main algorithm
-        vGraph->phasingProcess();
-        // push result to phasingResult
-        vGraph->exportResult((*chrIter), chrPhasingResult[*chrIter]);
+        vGraph->phasingProcess(chrPhasingResult[*chrIter]);
         // generate dot file
         if(params.generateDot){
             vGraph->writingDotFile((*chrIter));
@@ -145,29 +143,21 @@ PhasingProcess::PhasingProcess(PhasingParameters params)
     std::cerr<< "\nparsing total:  " << difftime(time(NULL), begin) << "s\n";
     
     begin = time(NULL);
-    std::cerr<< "merge results ... ";
-    // Create a container for merged phasing results.
-    PhasingResult mergedPhasingResult;
-    // Merge phasing results from all chromosomes.
-    mergeAllChrPhasingResult(chrPhasingResult, mergedPhasingResult);
-    std::cerr<< difftime(time(NULL), begin) << "s\n";
-    
-    begin = time(NULL);
     std::cerr<< "writeResult SNP ... ";
-    snpFile.writeResult(mergedPhasingResult);
+    snpFile.writeResult(chrPhasingResult);
     std::cerr<< difftime(time(NULL), begin) << "s\n";
     
     if(params.svFile!=""){
         begin = time(NULL);
         std::cerr<< "write SV Result ... ";
-        svFile.writeResult(mergedPhasingResult);
+        svFile.writeResult(chrPhasingResult);
         std::cerr<< difftime(time(NULL), begin) << "s\n";
     }
     
     if(params.modFile!=""){
         begin = time(NULL);
         std::cerr<< "write mod Result ... ";
-        modFile.writeResult(mergedPhasingResult);
+        modFile.writeResult(chrPhasingResult);
         std::cerr<< difftime(time(NULL), begin) << "s\n";
     }
 

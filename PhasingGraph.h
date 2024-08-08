@@ -77,14 +77,6 @@ enum Haplotype {
     HAPLOTYPE2 = 1
 };
 
-struct PhaseResult {
-    int refHaplotype;
-    int phaseSet;
-    PhaseResult() = default;
-    PhaseResult(int inRefHaplotype, int inPhaseSet)
-        : refHaplotype(inRefHaplotype), phaseSet(inPhaseSet) {}
-};
-
 class VairiantGraph{
     
     private:
@@ -103,7 +95,7 @@ class VairiantGraph{
         std::map<int,int> *variantType;
 
         // position phasing result
-        std::map<int,PhaseResult> *posPhasingResult;
+        PosPhasingResult *posPhasingResult;
         // store phased read and read's haplotype
         std::map<std::string,int> *readHpMap;
 
@@ -122,10 +114,9 @@ class VairiantGraph{
     
         void addEdge(std::vector<ReadVariant> &in_readVariant);
         
-        void phasingProcess();
+        void phasingProcess(PosPhasingResult &posPhasingResult);
         void writingDotFile(std::string dotPrefix);
         std::map<std::string,int>* getReadHP();
-        void exportResult(std::string chrName, PhasingResult &result);
         int totalNode();
 
         void destroy();
