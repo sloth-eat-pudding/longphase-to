@@ -679,4 +679,83 @@ void VairiantGraph::phasingProcess(PosPhasingResult &inPosPhasingResult){
     this->readCorrection();  
 }
 
+Clip::Clip(std::string &chr, ClipCount &clipCount){
+    this->chr = chr;
+    getCNVInterval(clipCount);
+}
 
+Clip::~Clip(){
+}
+
+void Clip::getCNVInterval(ClipCount &clipCount){
+    bool push=0;
+    bool up =1;
+    bool convert =0;
+
+    int push_pos=-2;
+    int firstClipOldPos=-10000;
+    int secondClipOldPos=-10000;
+
+    int upCount = 0;
+    int downCount = 0;
+    int passDept=5;
+    int intervalSecondMax=0;
+    int tmp=0;
+
+    for(auto posIter = clipCount.begin(); posIter != clipCount.end() ; posIter++ ){
+        upCount = posIter->second[FRONT];
+        downCount = posIter->second[BACK];
+        if (upCount>=5 || downCount>=5){
+            if (((posIter->first-secondClipOldPos)>10000)){
+                if (push_pos!=-1 && push_pos!=-2){
+                    firstClipOldPos=push_pos;
+                    cnvInterval.push_back(push_pos);
+                    push_pos=-2;
+                }
+                else if (push_pos==-1){
+                    push_pos=-2;
+                }
+                push=0;
+                convert=0;
+                passDept=5;
+                intervalSecondMax=0;
+                if((up && upCount<downCount)||(!up && upCount>downCount)){
+                    up=!up;
+                }
+            }
+            if (upCount>=passDept || downCount>=passDept){
+                if(!convert&&((up && upCount<downCount)||(!up && upCount>downCount))){
+                    up=!up;
+                    convert=1;
+                }
+                if (abs(upCount - downCount) > 12){
+                    if(((up && upCount<downCount)||(!up && upCount>downCount))){
+                        up=!up;
+                    }
+                    if (((posIter->first-firstClipOldPos)>10000) && !push){
+                        push_pos=posIter->first;
+                        passDept=(upCount-downCount>10?upCount:downCount)/4;
+                        passDept=(passDept>5?passDept:5);
+                        push=1;
+                    }
+                    else if (((push&&convert)||(!push&&!convert))){
+                        tmp= up ? upCount : downCount;
+                        if (intervalSecondMax < tmp) {
+                            intervalSecondMax = tmp;
+                        }
+                    }
+                }
+                else if (((push&&convert)||(!push&&!convert))){
+                    tmp= up ? upCount : downCount;
+                    if (intervalSecondMax < tmp) {
+                        intervalSecondMax = tmp;
+                    }
+                }
+                if ((push && convert && passDept<=intervalSecondMax)){
+                    push_pos=-1;
+                }
+                secondClipOldPos=posIter->first;
+            }
+        }
+    }
+}

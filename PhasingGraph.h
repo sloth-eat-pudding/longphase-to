@@ -8,6 +8,7 @@
 
 typedef std::pair<int, int> PosAllele;
 typedef std::map<std::string, int> ReadBaseMap;
+using PosVec = std::vector<int>;
 
 class SubEdge{
     
@@ -123,7 +124,16 @@ class VairiantGraph{
         
 };
 
+class Clip{
+    private:
+        std::string chr;
+        PosVec cnvInterval;
+        void getCNVInterval(ClipCount &clipCount);
 
+    public:
+        Clip(std::string &chr, ClipCount &inClipCount);
+        ~Clip();
+};
 
 
 #endif

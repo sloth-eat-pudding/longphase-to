@@ -118,6 +118,7 @@ PhasingProcess::PhasingProcess(PhasingParameters params)
             continue;
         }
         
+        Clip *clip = new Clip((*chrIter), clipCount);
         // create a graph object and prepare to phasing.
         VairiantGraph *vGraph = new VairiantGraph(chr_reference, params);
         // trans read-snp info to edge info
