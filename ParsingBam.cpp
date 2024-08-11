@@ -812,7 +812,7 @@ BamParser::~BamParser(){
     delete currentMod;
 }
 
-void BamParser::direct_detect_alleles(int lastSNPPos, htsThreadPool &threadPool, PhasingParameters params, std::vector<ReadVariant> &readVariantVec, const std::string &ref_string){
+void BamParser::direct_detect_alleles(int lastSNPPos, htsThreadPool &threadPool, PhasingParameters params, std::vector<ReadVariant> &readVariantVec, ClipCount &clipCount, const std::string &ref_string){
     
     // record SNP start iter
     std::map<int, RefAlt>::iterator tmpFirstVariantIter = firstVariantIter;
@@ -862,7 +862,7 @@ void BamParser::direct_detect_alleles(int lastSNPPos, htsThreadPool &threadPool,
                 continue;
             }
 
-            get_snp(*bamHdr,*aln,readVariantVec, ref_string, params.isONT);
+            get_snp(*bamHdr, *aln, readVariantVec, clipCount, ref_string, params.isONT);
         }
         hts_idx_destroy(idx);
         bam_hdr_destroy(bamHdr);
@@ -872,7 +872,7 @@ void BamParser::direct_detect_alleles(int lastSNPPos, htsThreadPool &threadPool,
     
 }
 
-void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<ReadVariant> &readVariantVec, const std::string &ref_string, bool isONT){
+void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<ReadVariant> &readVariantVec, ClipCount &clipCount, const std::string &ref_string, bool isONT){
 
     ReadVariant *tmpReadResult = new ReadVariant();
     (*tmpReadResult).read_name = bam_get_qname(&aln);
@@ -1151,10 +1151,14 @@ void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<
         // 4: soft clipping (clipped sequences present in SEQ)
         else if( cigar_op == 4 ){
             query_pos += cigar_oplen;
+            getClip(ref_pos, i, cigar_oplen, clipCount);
         }
         // 5: hard clipping (clipped sequences NOT present in SEQ)
+        else if( cigar_op == 5 ){
+            getClip(ref_pos, i, cigar_oplen, clipCount);
+        }
         // 6: padding (silent deletion from padded reference)
-        else if( cigar_op == 5 || cigar_op == 6 ){
+        else if( cigar_op == 6 ){
             // do nothing
         }
         else{
@@ -1166,6 +1170,17 @@ void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<
         readVariantVec.push_back((*tmpReadResult));
     
     delete tmpReadResult;
+}
+
+void BamParser::getClip(int pos, int clipFrontBack, int len, ClipCount &clipCount){
+    if (len > 5){
+        if (clipFrontBack == FRONT){
+            clipCount[pos][FRONT]++;
+        }
+        else {
+            clipCount[pos][BACK]++;
+        }
+    }
 }
 
 METHParser::METHParser(PhasingParameters &in_params, SnpParser &in_snpFile, SVParser &in_svFile){

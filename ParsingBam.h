@@ -213,6 +213,14 @@ struct Alignment{
     bool is_reverse;
 };
 
+enum ClipFrontBack {
+    FRONT = 0,
+    BACK = 1
+};
+
+// pos<read start|read end ,count >
+using ClipCount = std::map<int, std::map<ClipFrontBack, int>>;
+
 class BamParser{
     
     private:
@@ -227,14 +235,14 @@ class BamParser{
         // mod map and iter
         std::map<int, std::map<std::string ,RefAlt> > *currentMod;
         std::map<int, std::map<std::string ,RefAlt> >::iterator firstModIter;
-        void get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<ReadVariant> &readVariantVec, const std::string &ref_string, bool isONT);
-   
+        void get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<ReadVariant> &readVariantVec, ClipCount &clipCount, const std::string &ref_string, bool isONT);
+        void getClip(int pos, int clipFrontBack, int len, ClipCount &clipCount);
+
     public:
         BamParser(std::string chrName, std::vector<std::string> inputBamFileVec, SnpParser &snpMap, SVParser &svFile, METHParser &modFile);
         ~BamParser();
         
-        void direct_detect_alleles(int lastSNPPos, htsThreadPool &threadPool, PhasingParameters params, std::vector<ReadVariant> &readVariantVec , const std::string &ref_string);
-
+        void direct_detect_alleles(int lastSNPPos, htsThreadPool &threadPool, PhasingParameters params, std::vector<ReadVariant> &readVariantVec, ClipCount &clipCount, const std::string &ref_string);
 };
 
 

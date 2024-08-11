@@ -102,8 +102,9 @@ PhasingProcess::PhasingProcess(PhasingParameters params)
         std::string chr_reference = fastaParser.chrString.at(*chrIter);
         // use to store variant
         std::vector<ReadVariant> readVariantVec;
+        ClipCount clipCount;
         // run fetch variant process
-        bamParser->direct_detect_alleles(lastSNPpos, threadPool, params, readVariantVec , chr_reference);
+        bamParser->direct_detect_alleles(lastSNPpos, threadPool, params, readVariantVec, clipCount, chr_reference);
         // free memory
         delete bamParser;
         
