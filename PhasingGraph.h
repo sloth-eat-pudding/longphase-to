@@ -32,7 +32,7 @@ class SubEdge{
         
         void destroy();
         
-        void addSubEdge(int currentQuality, Variant connectNode, std::string readName, int baseQuality, double edgeWeight);
+        void addSubEdge(Variant &currentNode, Variant &connectNode, std::string readName, int baseQuality, double edgeWeight);
         std::pair<float,float> BestPair(int targetPos);
         float getRefReadCount(int targetPos);
         float getAltReadCount(int targetPos);        
@@ -88,11 +88,8 @@ class VairiantGraph{
         // By default, a Map in C++ is sorted in increasing order based on its key.
         // position, edge
         std::map<int,VariantEdge*> *edgeList;
-        // Each position will record the included reads and their corresponding base qualities.
-        // position, < read name, quality>
-        std::map<int,ReadBaseMap*> *totalVariantInfo;
-        // position, type < 0=SNP 1=SV 2=MOD 3=INDEL >
-        std::map<int,int> *variantType;
+        // position, type
+        std::map<int,int> *variantPosType;
 
         // position phasing result
         PosPhasingResult *posPhasingResult;

@@ -946,11 +946,10 @@ void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<
                     
                     // check varaint strand in vcf file is same as bam file
                     if( (*readIter).second.is_reverse == bam_is_rev(&aln) ){
-                        // -2 : forward strand
-                        // -3 : reverse strand
-                        int strand = ( bam_is_rev(&aln) ? -3 : -2);
                         int allele = ((*readIter).second.is_modify ? 0 : 1) ;
-                        Variant *tmpVariant = new Variant(modPos, allele, strand );
+                        // using this quality to identify modification forward/reverse
+                        int quality = (bam_is_rev(&aln) ? MOD_HET_REVERSE_STRAND : MOD_HET_FORWARD_STRAND);
+                        Variant *tmpVariant = new Variant(modPos, allele, quality );
                         // push mod into result vector
                         (*tmpReadResult).variantVec.push_back( (*tmpVariant) );
                         delete tmpVariant;
@@ -972,9 +971,9 @@ void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<
                 if( readIter != (*currentSV)[svPos].end() ){
                     allele = 1;
                 }
-                // use quality -1 to identify SVs
+                // use quality SV_HET to identify SVs
                 // push this SV to vector
-                Variant *tmpVariant = new Variant(svPos, allele, -1 );
+                Variant *tmpVariant = new Variant(svPos, allele, SV_HET );
                 (*tmpReadResult).variantVec.push_back( (*tmpVariant) );
                 delete tmpVariant;
                 // next SV iter 
@@ -995,7 +994,7 @@ void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<
                     int refAlleleLen = (*currentVariantIter).second.Ref.length();
                     int altAlleleLen = (*currentVariantIter).second.Alt.length();
                     int offset = variantPos - ref_pos;
-                    int base_q = 0;
+                    int base_q = UNDEFINED;
                     int allele = -1;
                     
                     // The position of the variant exceeds the length of the read.
@@ -1031,7 +1030,7 @@ void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<
                             allele = 0 ;
                         }
                         // using this quality to identify indel
-                        base_q = -4;
+                        base_q = INDEL_HET;
                     } 
             
                     // deletion
@@ -1045,7 +1044,7 @@ void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<
                             allele = 0 ;
                         }
                         // using this quality to identify indel
-                        base_q = -4;
+                        base_q = INDEL_HET;
                     } 
             
                     if( allele != -1 ){
@@ -1093,7 +1092,7 @@ void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<
                         
                         int refAlleleLen = (*currentVariantIter).second.Ref.length();
                         int altAlleleLen = (*currentVariantIter).second.Alt.length();
-                        int base_q = 0;  
+                        int base_q = UNDEFINED;
                         
                         if( query_pos + 1 > aln.core.l_qseq ){
                             return;
@@ -1122,12 +1121,12 @@ void BamParser::get_snp(const  bam_hdr_t &bamHdr,const bam1_t &aln, std::vector<
 
                                 allele = 1;
                                 // using this quality to identify indel
-                                base_q = -4;
+                                base_q = INDEL_HET;
                             }
                             else if ( allele == -1 ) {
                                 allele = 0;
                                 // using this quality to identify indel
-                                base_q = -4;
+                                base_q = INDEL_HET;
                             }
                             
                         }
