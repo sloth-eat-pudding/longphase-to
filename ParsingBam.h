@@ -35,8 +35,68 @@ class FastaParser{
     
 };
 
-class BaseVairantParser{
+enum Fields {
+    CHROM = 0,
+    POS = 1,
+    ID = 2,
+    REF = 3,
+    ALT = 4,
+    QUAL = 5,
+    FILTER = 6,
+    INFO = 7,
+    FORMAT = 8,
+    SAMPLE = 9
+};
+
+class FormatSample {
+
+    private:
+        std::vector<std::string> &fields;
+
+        int findFlagColon(const int flagStart);
+        int findValueStart(const int flagColon);
+
+        void eraseColon(const Fields field, const int modifyStart);
+        void resetGTValue(int modifyStart);
+
+        void addValues(const std::string& flag, const std::string& value);
+        void setGTValue(int modifyStart, const std::string& value);
+
     public:
+        FormatSample(std::vector<std::string>& fields);
+        void eraseFormatSample(const std::string& flag);
+        void addFlagAndValue(const std::string& flagBase, const int value, const std::string& flagAdd = "");
+        void setGTFlagAndValue(const std::string& flagBase, const std::string& value, const std::string& flagAdd = "");
+};
+
+struct FormatInfo {
+    std::string id;
+    std::string number;
+    std::string type;
+    std::string description;
+    bool is_present;
+};
+
+using FormatDefs = std::vector<FormatInfo>;
+
+class BaseVairantParser{
+
+    protected:
+        virtual bool checkType(const std::string& chr, int pos) const = 0;
+        FormatDefs formatDefs = {
+            {"GT", "1", "String", "Genotype", false},
+            {"PS", "1", "Integer", "Phase set identifier", false},
+            // {"SH", "1", "Integer", "Source haplotype", false},
+            // {"GT2", "1", "String", "Sub genotype", false},
+            // {"PS2", "1", "Integer", "Sub phase set identifier", false},
+            // {"SH2", "1", "Integer", "Sub source haplotype", false},
+        };
+        bool commandLine;
+        PhasingParameters *params;
+
+    public:
+        BaseVairantParser();
+        virtual ~BaseVairantParser();
         // input parser
         void compressParser(std::string &variantFile);
         void unCompressParser(std::string &variantFile);
@@ -44,14 +104,12 @@ class BaseVairantParser{
         // output parser
         void compressInput(std::string variantFile, std::string resultFile, ChrPhasingResult &chrPhasingResult);
         void unCompressInput(std::string variantFile, std::string resultFile, ChrPhasingResult &chrPhasingResult);
-        virtual void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, ChrPhasingResult &chrPhasingResult)=0;
+        virtual void writeLine(std::string &input, std::ofstream &resultVcf, ChrPhasingResult &chrPhasingResult);
 };
 
 class SnpParser : public BaseVairantParser{
     
     private:
-        PhasingParameters *params;
-        //std::string variantFile;
         // chr, variant position (0-base), allele haplotype
         std::map<std::string, std::map<int, RefAlt> > *chrVariant;
         // id and idx
@@ -61,13 +119,9 @@ class SnpParser : public BaseVairantParser{
         
         // override input parser
         void parserProcess(std::string &input);
-        // override output parser
-        void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, ChrPhasingResult &chrPhasingResult);
-        
-        bool commandLine;
-        
+
     public:
-    
+
         SnpParser(PhasingParameters &in_params);
         ~SnpParser();
             
@@ -84,12 +138,13 @@ class SnpParser : public BaseVairantParser{
         bool findSNP(std::string chr, int posistion);
         
         void filterSNP(std::string chr, std::vector<ReadVariant> &readVariantVec, std::string &chr_reference);
+
+        bool checkType(const std::string& chr, int pos) const override;
 };
 
 class SVParser : public BaseVairantParser{
     
     private:
-        PhasingParameters *params;
         SnpParser *snpFile;
 
         // chr , variant position (0-base), read
@@ -99,10 +154,6 @@ class SVParser : public BaseVairantParser{
         
         // override input parser
         void parserProcess(std::string &input);
-        // override output parser
-        void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, ChrPhasingResult &chrPhasingResult);
-        
-        bool commandLine;
         
     public:
     
@@ -114,12 +165,13 @@ class SVParser : public BaseVairantParser{
         void writeResult(ChrPhasingResult &chrPhasingResult);
 
         bool findSV(std::string chr, int posistion);
+
+        bool checkType(const std::string& chr, int pos) const override;
 };
 
 class METHParser : public BaseVairantParser{
     
     private:
-        PhasingParameters *params;
         SnpParser *snpFile;
         SVParser *svFile;
         
@@ -135,10 +187,6 @@ class METHParser : public BaseVairantParser{
 
         // override input parser
         void parserProcess(std::string &input);
-        // override output parser
-        void writeLine(std::string &input, bool &ps_def, std::ofstream &resultVcf, ChrPhasingResult &chrPhasingResult);
-        
-        bool commandLine;
         
     public:
         
@@ -148,6 +196,8 @@ class METHParser : public BaseVairantParser{
         ~METHParser();
 		
 		void writeResult(ChrPhasingResult &chrPhasingResult);
+
+        bool checkType(const std::string& chr, int pos) const override;
 };
 
 struct Alignment{
