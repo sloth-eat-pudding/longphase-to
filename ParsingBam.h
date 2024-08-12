@@ -13,6 +13,20 @@
 
 #include <zlib.h>
 
+enum VariantType {
+    UNDEFINED = -1,
+    SNP_HET = -2, // heterozygous Single Nucleotide Polymorphism
+    SNP_HOM = -3, // homozygous Single Nucleotide Polymorphism
+    INDEL_HET = -4, // heterozygous insertion/deletion
+    INDEL_HOM = -5, // homozygous insertion/deletion
+    SV_HET = -6, // heterozygous structure variation
+    SV_HOM = -7, // homozygous structure variation
+    MOD_HET_FORWARD_STRAND = -8, // heterozygous forward strand modification
+    MOD_HET_REVERSE_STRAND = -9, // heterozygous reverse strand modification
+    MOD_HET = -10, // heterozygous modification
+    MOD_HOM = -11, // homozygous modification
+};
+
 struct RefAlt{
     std::string Ref;
     std::string Alt;
@@ -119,6 +133,9 @@ class SnpParser : public BaseVairantParser{
         
         // override input parser
         void parserProcess(std::string &input);
+        void fetchAndValidateTag(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, int **dst, int *ndst, hts_pos_t pos);
+        int confirmRequiredGT(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, hts_pos_t pos);
+        void recordVariant(std::string &chr, bcf1_t *rec, std::map<std::string, std::map<int, RefAlt> > *chrVariant);
 
     public:
 
