@@ -411,77 +411,16 @@ SnpParser::SnpParser(PhasingParameters &in_params){
 
     // struct for storing each record
     bcf1_t *rec = bcf_init();
-    int ngt_arr = 0;
-    int ngt = 0;
-    int *gt     = NULL;
-    
-    // loop vcf line 
-    while (bcf_read(inf, hdr, rec) == 0) {
-        // snp
-        if (bcf_is_snp(rec)) {
-            ngt = bcf_get_format_int32(hdr, rec, "GT", &gt, &ngt_arr);
+    int parserType = 0;
 
-            if(ngt<0){
-                std::cerr<< "pos " << rec->pos << " missing GT value" << "\n";
-                exit(1);
-            }
-            
-            // just phase hetero SNP
-            if ( (gt[0] == 2 && gt[1] == 4) || // 0/1
-                 (gt[0] == 4 && gt[1] == 2) || // 1/0
-                 (gt[0] == 2 && gt[1] == 5) || // 0|1
-                 (gt[0] == 4 && gt[1] == 3)    // 1|0 
-                ) {
-                
+    while (bcf_read(inf, hdr, rec) == 0) {
+        // snp or indel
+        if (bcf_is_snp(rec) || params->phaseIndel) {
+            parserType = confirmRequiredGT(hdr, rec, "GT", rec->pos);
+            if ( parserType != UNDEFINED ) {
                 // get chromosome string
                 std::string chr = seqnames[rec->rid];
-                // position is 0-base
-                int variantPos = rec->pos;
-                // get r alleles
-                RefAlt tmp;
-                tmp.Ref = rec->d.allele[0]; 
-                tmp.Alt = rec->d.allele[1];
-                
-                //prevent the MAVs calling error which makes the GT=0/1
-                if ( rec->d.allele[1][2] != '\0' ){
-                    continue;
-                }
-                
-                // record 
-                (*chrVariant)[chr][variantPos] = tmp;
-            }
-        } 
-        // indel 
-        else if ( params->phaseIndel ){
-            ngt = bcf_get_format_int32(hdr, rec, "GT", &gt, &ngt_arr);
-            
-            if(ngt<0){
-                std::cerr<< "pos " << rec->pos << " missing GT value" << "\n";
-                exit(1);
-            }
-            
-            if ( (gt[0] == 2 && gt[1] == 4) || // 0/1
-                 (gt[0] == 4 && gt[1] == 2) || // 1/0
-                 (gt[0] == 2 && gt[1] == 5) || // 0|1
-                 (gt[0] == 4 && gt[1] == 3)    // 1|0 
-                ) {
-                    
-                // get chromosome string
-                std::string chr = seqnames[rec->rid];
-                // position is 0-base
-                int variantPos = rec->pos;
-                // get r alleles
-                RefAlt tmp;
-                tmp.Ref = rec->d.allele[0]; 
-                tmp.Alt = rec->d.allele[1];
-                
-                //prevent the MAVs calling error which makes the GT=0/1
-                if ( rec->d.allele[1][tmp.Alt.size()+1] != '\0' ){
-                   continue ;
-                }
-                
-                // record 
-                (*chrVariant)[chr][variantPos] = tmp;
+                recordVariant(chr, rec, chrVariant);
             }
         }
     }
@@ -540,6 +479,55 @@ void SnpParser::writeResult(ChrPhasingResult &chrPhasingResult){
 }
 
 void SnpParser::parserProcess(std::string &input){
+}
+
+void SnpParser::fetchAndValidateTag(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, int **dst, int *ndst, hts_pos_t pos){
+    int checkTag = bcf_get_format_int32(hdr, line, tag, dst, ndst);
+
+    if(checkTag<0){
+        std::cerr<< "pos " << pos << " missing " << tag <<" value" << "\n";
+        exit(1);
+    }
+}
+
+int SnpParser::confirmRequiredGT(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, hts_pos_t pos){
+    
+    int ngt_arr = 0;
+    int *gt = NULL;
+    fetchAndValidateTag(hdr, line, tag, &gt, &ngt_arr, pos);
+    
+    // hetero SNP
+    if ((gt[0] == 2 && gt[1] == 4) || (gt[0] == 4 && gt[1] == 2) || // 0/1, 1/0
+        (gt[0] == 2 && gt[1] == 5) || (gt[0] == 4 && gt[1] == 3) || // 0|1, 1|0
+        (gt[0] == 0 && gt[1] == 3) || (gt[0] == 2 && gt[1] == 1)) { // .|0, 0|.
+        return SNP_HET;
+    }
+    // // homo SNP
+    // else if ((gt[0] == 4 && gt[1] == 4) || // 1/1
+    //          (gt[0] == 4 && gt[1] == 5) || // 1|1
+    //          (gt[0] == 0 && gt[1] == 5) || (gt[0] == 4 && gt[1] == 1)) { // .|1, 1|.
+    //     return SNP_HOM;
+    // }
+    else {
+        return UNDEFINED;
+    }
+}
+
+void SnpParser::recordVariant(std::string &chr, bcf1_t *rec, std::map<std::string, std::map<int, RefAlt> > *chrVariant) {
+    // position is 0-base
+    int variantPos = rec->pos;
+    // get r alleles
+    RefAlt tmp;
+    tmp.Ref = rec->d.allele[0]; 
+    tmp.Alt = rec->d.allele[1];
+    
+    //prevent the MAVs calling error which makes the GT=0/1
+    if ( rec->d.allele[1][tmp.Alt.size()+1] != '\0' ){
+        return;
+    }
+    
+    // record 
+    (*chrVariant)[chr][variantPos] = tmp;
 }
 
 bool SnpParser::findSNP(std::string chr, int position){

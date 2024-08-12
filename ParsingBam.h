@@ -133,6 +133,9 @@ class SnpParser : public BaseVairantParser{
         
         // override input parser
         void parserProcess(std::string &input);
+        void fetchAndValidateTag(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, int **dst, int *ndst, hts_pos_t pos);
+        int confirmRequiredGT(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, hts_pos_t pos);
+        void recordVariant(std::string &chr, bcf1_t *rec, std::map<std::string, std::map<int, RefAlt> > *chrVariant);
 
     public:
 
